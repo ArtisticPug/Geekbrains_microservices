@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redmine
+  name: redmine
+  namespace: lesson-5
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redmine
+  template:
+    metadata:
+      labels:
+        app: redmine
+    spec:
+      containers:
+        - image: redmine:4.1.1
+          name: redmine
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: REDMINE_DB_POSTGRES
+              value: postgres-service
+            - name: REDMINE_DB_USERNAME
+              value: postgresuser
+            - name: REDMINE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret-password
+                  key: password
+            - name: REDMINE_DB_DATABASE
+              value: postgresdatabase
+            - name: REDMINE_SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: super-secret-password
+                  key: password
