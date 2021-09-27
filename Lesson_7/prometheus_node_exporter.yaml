@@ -1,8 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: default
+  labels:
+    app: node-exporter
+spec:
+  ports:
+    - port: 9101
+      protocol: TCP
+  selector:
+    app: node-exporter
+
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: node-exporter
+    k8s-app: node-exporter
   name: node-exporter
   namespace: default
 spec:
@@ -14,25 +29,42 @@ spec:
       labels:
         app: node-exporter
     spec:
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
       containers:
         - image: prom/node-exporter
+          args:
+            - --path.procfs
+            - /host/proc
+            - --path.sysfs
+            - /host/sys
+            - --collector.filesystem.ignored-mount-points
+            - '"^/(sys|proc|dev|host|etc)($|/)"'
           name: node-exporter
+          volumeMounts:
+            - name: dev
+              mountPath: /host/dev
+            - name: proc
+              mountPath: /host/proc
+            - name: sys
+              mountPath: /host/sys
+            - name: rootfs
+              mountPath: /rootfs
           ports:
             - containerPort: 9101
               protocol: TCP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: node-exporter
-  namespace: default
-  annotations:
-    prometheus.io/scrape: 'true'
-    prometheus.io/port: '9100'
-spec:
-  selector:
-    app: node-exporter
-  ports:
-    - name: node-exporter
-      protocol: TCP
-      port: 9101
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: rootfs
+          hostPath:
+            path: /
